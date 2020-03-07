@@ -4,6 +4,7 @@
 import argparse
 import codecs
 import configparser
+import datetime
 import errno
 import glob
 from operator import itemgetter
@@ -85,7 +86,7 @@ class InstagramScraper(object):
     """InstagramScraper scrapes and downloads an instagram user's photos and videos"""
 
     def __init__(self, **kwargs):
-        default_attr = dict(username='', usernames=[], filename=None,
+        default_attr = dict(username='', before=None, after=None, usernames=[], filename=None,
                             login_user=None, login_pass=None,
                             followings_input=False, followings_output='profiles.txt',
                             destination='./', logger=None, retain_username=False, interactive=False,
@@ -798,6 +799,16 @@ class InstagramScraper(object):
         iter = 0
         for item in tqdm.tqdm(self.query_media_gen(user), desc='Searching {0} for posts'.format(username),
                               unit=' media', disable=self.quiet):
+            post_time = item.get('taken_at_timestamp', 0)
+            post_datetime = datetime.datetime.fromtimestamp(post_time)
+            if self.before and post_datetime > self.before:  # The post is after the before time
+                print("Not downloading post from {} because it is after the 'before' date, {}".format(
+                    post_datetime.strftime("%Y-%m-%d"), self.before.strftime("%Y-%m-%d")))
+                continue
+            if self.after and post_datetime < self.after:  # The post is before the after time
+                print("Not downloading post from {} because it is before the 'after' date, {}".format(
+                    post_datetime.strftime("%Y-%m-%d"), self.after.strftime("%Y-%m-%d")))
+                continue
             # -Filter command line
             if self.filter:
                 if 'tags' in item:
@@ -1009,9 +1020,17 @@ class InstagramScraper(object):
     def download(self, item, save_dir='./'):
         """Downloads the media file."""
         for full_url, base_name in self.templatefilename(item):
+
+            # Get a datestring for a subfolder
+            datestring = "profile"
+            post_time = item.get('taken_at_timestamp', 0)
+            post_datetime = datetime.datetime.fromtimestamp(post_time)
+            if post_time > 0:
+                datestring = post_datetime.strftime("%Y%m%dT%H%M%S")
+
             url = full_url.split('?')[0] #try the static url first, stripping parameters
 
-            file_path = os.path.join(save_dir, base_name)
+            file_path = os.path.join(save_dir, datestring, base_name)
 
             if not os.path.exists(os.path.dirname(file_path)):
                 self.make_dir(os.path.dirname(file_path))
@@ -1340,6 +1359,10 @@ def main():
         fromfile_prefix_chars='@')
 
     parser.add_argument('username', help='Instagram user(s) to scrape', nargs='*')
+    parser.add_argument('--after', default=None, metavar='YYYY-MM-dd',
+                        type=lambda s: datetime.datetime.strptime(s, '%Y-%m-%d'))
+    parser.add_argument('--before', default=None, metavar='YYYY-MM-dd',
+                        type=lambda s: datetime.datetime.strptime(s, '%Y-%m-%d'))
     parser.add_argument('--destination', '-d', default='./', help='Download destination')
     parser.add_argument('--login-user', '--login_user', '-u', default=None, help='Instagram login user')
     parser.add_argument('--login-pass', '--login_pass', '-p', default=None, help='Instagram login password')
@@ -1382,6 +1405,9 @@ def main():
     parser.add_argument('--log_destination', '-l', type=str, default='', help='destination folder for the instagram-scraper.log file')
 
     args = parser.parse_args()
+
+    if args.before and args.after:
+        assert args.before > args.after, "No dates can be after {} and before {}".format(args.after, args.before)
 
     if (args.login_user and args.login_pass is None) or (args.login_user is None and args.login_pass):
         parser.print_help()
