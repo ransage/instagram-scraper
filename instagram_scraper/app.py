@@ -1374,13 +1374,7 @@ def main():
     parser.add_argument('--maximum', '-m', type=int, default=0, help='Maximum number of items to scrape')
     parser.add_argument('--retain-username', '--retain_username', '-n', action='store_true', default=False,
                         help='Creates username subdirectory when destination flag is set')
-    parser.add_argument('--media-metadata', '--media_metadata', action='store_true', default=False,
-                        help='Save media metadata to json file')
-    parser.add_argument('--profile-metadata', '--profile_metadata', action='store_true', default=False,
-                        help='Save profile metadata to json file')
     parser.add_argument('--proxies', default={}, help='Enable use of proxies, add a valid JSON with http or/and https urls.')
-    parser.add_argument('--include-location', '--include_location', action='store_true', default=False,
-                        help='Include location data when saving media metadata')
     parser.add_argument('--media-types', '--media_types', '-t', nargs='+', default=['image', 'video', 'story'],
                         help='Specify media types to scrape')
     parser.add_argument('--latest', action='store_true', default=False, help='Scrape new media since the last scrape')
@@ -1394,7 +1388,6 @@ def main():
     parser.add_argument('--filter_location_file', default=None, type=str, help="file containing list of locations to filter query by")
     parser.add_argument('--location', action='store_true', default=False, help='Scrape media using a location-id')
     parser.add_argument('--search-location', action='store_true', default=False, help='Search for locations by name')
-    parser.add_argument('--comments', action='store_true', default=False, help='Save post comments to json file')
     parser.add_argument('--no-check-certificate', action='store_true', default=False, help='Do not use ssl on transaction')
     parser.add_argument('--interactive', '-i', action='store_true', default=False,
                         help='Enable interactive login challenge solving')
@@ -1405,6 +1398,10 @@ def main():
     parser.add_argument('--log_destination', '-l', type=str, default='', help='destination folder for the instagram-scraper.log file')
 
     args = parser.parse_args()
+    args.profile_metadata = True
+    args.comments = True
+    args.include_location = True
+    args.media_metadata = True
 
     if args.before and args.after:
         assert args.before > args.after, "No dates can be after {} and before {}".format(args.after, args.before)
